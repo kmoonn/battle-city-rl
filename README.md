@@ -11,7 +11,6 @@
 ## ✨ 特性
 
 - 🤖 **DQN 强化学习** - 使用 Deep Q-Network 训练智能体
-- 🎯 **高通关率** - 第一关通关率可达 100%
 - 🏆 **自动模型保存** - 按关卡保存最佳模型
 - 📊 **TensorBoard 可视化** - 实时监控训练过程
 - 🎮 **可视化测试** - 支持高速回放观看 AI 表现
@@ -26,10 +25,19 @@ git clone https://github.com/kmoonn/battle-city-rl.git
 cd battle-city-rl
 ```
 
-### 安装依赖
+### 创建环境
 
 ```bash
-pip install -r requirements.txt
+uv venv --python 3.10
+source .venv/bin/activate
+```
+
+### 安装依赖
+
+推荐使用 uv
+
+```bash
+uv pip install -r requirements.txt
 ```
 
 依赖列表：
@@ -60,7 +68,7 @@ python train_by_level.py --level 1 --new
 python train_by_level.py --test --level 1 --episodes 10
 
 # 可视化测试（显示游戏画面）
-python visualize.py --model ./models/level_1/best_model.zip --episodes 5 --speed 5
+python visualize.py --model ./models/level_1/best_model.zip --episodes 5 --speed 10
 
 # 使用最新模型测试
 python visualize.py --dqn --episodes 3 --speed 10
@@ -77,11 +85,11 @@ python visualize.py --play
 ```
 /
 ├── tanks.py              # 游戏引擎（原版 Battle City）
-├── battle_city_env.py    # Gymnasium 环境包装器
+├── env.py                # Gymnasium 环境包装器
 ├── config.py             # 配置模块（超参数、奖励设置）
 ├── utils.py              # 工具函数
 ├── train_by_level.py     # 按关卡训练脚本（推荐）
-├── train_ppo.py              # PPO 训练脚本
+├── train_ppo.py          # PPO 训练脚本
 ├── train_dqn.py          # DQN 训练脚本
 ├── continue_training.py  # 继续训练脚本
 ├── visualize.py          # 可视化测试脚本
@@ -249,8 +257,8 @@ REWARD_CONFIG['time_penalty'] = -0.02     # 增加时间压力
 ## 📮 联系方式
 
 如有问题或建议，欢迎：
-- 提交 [Issue](https://github.com/yourusername/rl-battle-city/issues)
-- 发起 [Discussion](https://github.com/yourusername/rl-battle-city/discussions)
+- 提交 [Issue](https://github.com/kmoonn/battle-city-rl/issues)
+- 发起 [Discussion](https://github.com/kmoonn/battle-city-rl/discussions)
 
 ---
 

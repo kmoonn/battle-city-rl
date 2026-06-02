@@ -12,7 +12,6 @@ import time
 # 添加当前目录到路径
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from config import ACTION_NAMES
 from utils import print_episode_result, find_latest_model
 
 
@@ -30,7 +29,7 @@ def test_with_visualization(model_path=None, n_episodes=3, speed=1.0):
     from stable_baselines3 import PPO, DQN
 
     # 导入环境
-    from battle_city_env import BattleCityEnv
+    from env import BattleCityEnv
 
     # 创建带渲染的环境
     print("创建可视化环境...")
@@ -153,7 +152,7 @@ def play_manually():
     print("=" * 60 + "\n")
 
     # 运行原始游戏
-    os.system(f"./battle/bin/python tanks.py")
+    os.system("python tanks.py")
 
 
 if __name__ == "__main__":

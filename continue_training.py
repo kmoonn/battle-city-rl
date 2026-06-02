@@ -7,6 +7,7 @@
 import os
 import sys
 import glob
+from datetime import datetime
 
 os.environ['SDL_VIDEODRIVER'] = 'dummy'
 
@@ -17,8 +18,8 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from battle_city_env import BattleCityEnv
-from config import DQN_CONFIG, CALLBACK_CONFIG, get_log_dir, get_model_dir
+from env import BattleCityEnv
+from config import DQN_CONFIG, CALLBACK_CONFIG
 from utils import setup_directories, print_training_info
 
 
@@ -70,7 +71,7 @@ def continue_training(model_path=None, additional_steps=None):
         additional_steps = DQN_CONFIG['total_timesteps']
 
     # 创建保存目录
-    timestamp = __import__('datetime').datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     log_dir = f"./logs/battle_city_dqn_continue_{timestamp}"
     model_dir = f"./models/battle_city_dqn_continue_{timestamp}"
     setup_directories(log_dir, model_dir)

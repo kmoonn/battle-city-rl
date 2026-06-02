@@ -18,7 +18,7 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from battle_city_env import BattleCityEnv
+from env import BattleCityEnv
 from config import DQN_CONFIG, CALLBACK_CONFIG
 
 

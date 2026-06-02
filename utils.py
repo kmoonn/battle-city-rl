@@ -75,16 +75,9 @@ def create_callbacks(model_dir, log_dir, config=None):
     )
     callbacks.append(checkpoint_callback)
 
-    # 评估回调
-    eval_callback = EvalCallback(
-        create_vec_env(env_class=None, level=1),  # 需要在外部设置
-        best_model_save_path=model_dir + "/best",
-        log_path=log_dir + "/eval",
-        eval_freq=config['eval_freq'],
-        n_eval_episodes=config['n_eval_episodes'],
-        deterministic=True
-    )
-    callbacks.append(eval_callback)
+    # 评估回调 - 注意：调用者需要自己创建评估环境
+    # 这里只创建检查点回调
+    eval_callback = None  # 需要在调用时传入 eval_env
 
     return callbacks
 

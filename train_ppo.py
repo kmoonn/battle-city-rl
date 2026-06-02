@@ -18,7 +18,7 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 # 添加当前目录到路径
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from battle_city_env import BattleCityEnv
+from env import BattleCityEnv
 from config import PPO_CONFIG, CALLBACK_CONFIG, get_log_dir, get_model_dir
 from utils import setup_directories, print_training_info, print_episode_result, find_latest_model
 
