@@ -54,15 +54,15 @@ LEVELS_ENEMIES = (
 # ============================================================
 
 PPO_CONFIG = {
-    'total_timesteps': 1_000_000,  # 100万步
-    'learning_rate': 1e-4,
-    'n_steps': 4096,
-    'batch_size': 128,
+    'total_timesteps': 5_000_000,  # 500万步（关卡难度较高）
+    'learning_rate': 3e-4,         # 提高学习率
+    'n_steps': 2048,               # 减少步数，更频繁更新
+    'batch_size': 64,              # 减小批大小，更稳定的梯度
     'n_epochs': 10,
     'gamma': 0.99,
     'gae_lambda': 0.95,
     'clip_range': 0.2,
-    'ent_coef': 0.05,  # 探索系数
+    'ent_coef': 0.01,              # 降低探索系数，更专注利用
 }
 
 # ============================================================
@@ -70,7 +70,7 @@ PPO_CONFIG = {
 # ============================================================
 
 DQN_CONFIG = {
-    'total_timesteps': 2_000_000,  # 200万步
+    'total_timesteps': 5_000_000,  # 500万步（关卡难度较高）
     'learning_rate': 1e-4,
     'buffer_size': 100000,
     'learning_starts': 10000,
@@ -79,7 +79,7 @@ DQN_CONFIG = {
     'train_freq': 4,
     'gradient_steps': 1,
     'target_update_interval': 1000,
-    'exploration_fraction': 0.3,
+    'exploration_fraction': 0.2,   # 减少探索比例，更快利用
     'exploration_initial_eps': 1.0,
     'exploration_final_eps': 0.05,
 }
@@ -89,12 +89,12 @@ DQN_CONFIG = {
 # ============================================================
 
 REWARD_CONFIG = {
-    'score_reward_factor': 1.0 / 30.0,  # 得分奖励系数
-    'death_penalty': -1.5,  # 死亡惩罚
-    'kill_reward': 2.0,  # 击杀奖励
-    'time_penalty': -0.01,  # 时间惩罚
-    'level_complete_reward': 50.0,  # 通关奖励
-    'game_over_penalty': -5.0,  # 游戏结束惩罚
+    'score_reward_factor': 1.0 / 15.0,  # 增大得分奖励
+    'death_penalty': -5.0,               # 增大死亡惩罚
+    'kill_reward': 10.0,                 # 大幅增大击杀奖励
+    'time_penalty': -0.005,              # 减小时间惩罚（避免负奖励累积）
+    'level_complete_reward': 200.0,      # 大幅增大通关奖励
+    'game_over_penalty': -20.0,          # 增大游戏结束惩罚
 }
 
 # ============================================================

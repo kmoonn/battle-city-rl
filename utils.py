@@ -2,15 +2,19 @@
 # -*- coding: utf-8 -*-
 """
 坦克大战强化学习工具模块
-提供共享的工具函数和回调设置
+提供共享的工具函数和路径辅助
 """
 
+import glob
 import os
-from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback
+
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv
 
-from config import CALLBACK_CONFIG
+
+# ============================================================
+# 环境辅助
+# ============================================================
 
 
 def make_env(env_class, level=1, render_mode=None):
@@ -31,6 +35,7 @@ def make_env(env_class, level=1, render_mode=None):
     return _init
 
 
+
 def create_vec_env(env_class, level=1, n_envs=1, render_mode=None):
     """
     创建向量化环境
@@ -48,38 +53,190 @@ def create_vec_env(env_class, level=1, n_envs=1, render_mode=None):
     return DummyVecEnv(env_fns)
 
 
-def create_callbacks(model_dir, log_dir, config=None):
+# ============================================================
+# 模型与路径辅助
+# ============================================================
+
+
+def normalize_algorithm(algorithm='dqn'):
+    """规范化算法名称"""
+    return 'ppo' if str(algorithm).lower() == 'ppo' else 'dqn'
+
+
+
+def get_model_class(algorithm='dqn'):
+    """根据算法名称返回对应的 SB3 模型类"""
+    from stable_baselines3 import DQN, PPO
+
+    return PPO if normalize_algorithm(algorithm) == 'ppo' else DQN
+
+
+
+def get_level_model_dir(level=1, algorithm='dqn', base_dir="./models"):
+    """获取按算法和关卡划分的模型目录"""
+    algorithm = normalize_algorithm(algorithm)
+    return os.path.join(base_dir, algorithm, f"level_{level}")
+
+
+
+def get_level_log_dir(level=1, algorithm='dqn', base_dir="./logs"):
+    """获取按算法和关卡划分的日志目录"""
+    algorithm = normalize_algorithm(algorithm)
+    return os.path.join(base_dir, algorithm, f"level_{level}")
+
+
+
+def strip_zip_suffix(model_path):
+    """Stable-Baselines3 支持不带 .zip 的保存名前缀，这里统一处理加载路径"""
+    if model_path.endswith(".zip"):
+        return model_path[:-4]
+    return model_path
+
+
+
+def load_model(model_path, env, algorithm='dqn'):
+    """按算法加载模型"""
+    model_class = get_model_class(algorithm)
+    return model_class.load(strip_zip_suffix(model_path), env=env)
+
+
+
+def _latest_file(paths):
+    """按修改时间返回最新文件"""
+    existing_paths = [path for path in paths if os.path.exists(path)]
+    if not existing_paths:
+        return None
+    return max(existing_paths, key=os.path.getmtime)
+
+
+
+def _latest_pattern(pattern):
+    """返回通配匹配到的最新文件"""
+    return _latest_file(glob.glob(pattern))
+
+
+
+def _find_legacy_level_model(level=1, base_dir="./models"):
+    """查找旧版按关卡目录中的模型（仅保留可明确识别为旧 DQN 流程的 best_model）"""
+    legacy_dir = os.path.join(base_dir, f"level_{level}")
+    best_model_path = os.path.join(legacy_dir, "best_model.zip")
+    if os.path.exists(best_model_path):
+        return best_model_path
+    return None
+
+
+
+def find_best_model(base_dir="./models", algorithm='dqn'):
     """
-    创建训练回调
+    查找最佳模型文件（兼容旧布局）
 
     Args:
-        model_dir: 模型保存目录
-        log_dir: 日志目录
-        config: 回调配置，默认使用 CALLBACK_CONFIG
+        base_dir: 模型基础目录
+        algorithm: 算法类型
 
     Returns:
-        回调列表
+        最佳模型路径，未找到返回 None
     """
-    if config is None:
-        config = CALLBACK_CONFIG
+    algorithm = normalize_algorithm(algorithm)
 
-    callbacks = []
+    candidates = [
+        _latest_pattern(os.path.join(base_dir, algorithm, "level_*", "best_model.zip")),
+        _latest_pattern(os.path.join(base_dir, f"battle_city_{algorithm}_*", "best", "best_model.zip")),
+    ]
 
-    # 检查点回调
-    checkpoint_callback = CheckpointCallback(
-        save_freq=config['checkpoint_freq'],
-        save_path=model_dir,
-        name_prefix="battle_city",
-        save_replay_buffer=False,
-        save_vecnormalize=True
-    )
-    callbacks.append(checkpoint_callback)
+    if algorithm == 'dqn':
+        candidates.append(_latest_pattern(os.path.join(base_dir, "level_*", "best_model.zip")))
 
-    # 评估回调 - 注意：调用者需要自己创建评估环境
-    # 这里只创建检查点回调
-    eval_callback = None  # 需要在调用时传入 eval_env
+    return _latest_file([path for path in candidates if path])
 
-    return callbacks
+
+
+def find_level_model(level=1, algorithm='dqn', base_dir="./models"):
+    """
+    查找指定关卡的最佳可用模型
+
+    优先顺序：
+    1. 新布局下该算法/关卡的 final_model.zip
+    2. 新布局下该算法/关卡最新 checkpoint
+    3. 旧版按关卡目录中的模型（仅 DQN 兼容）
+
+    Args:
+        level: 关卡编号
+        algorithm: 算法类型
+        base_dir: 模型基础目录
+
+    Returns:
+        模型路径，未找到返回 None
+    """
+    algorithm = normalize_algorithm(algorithm)
+    model_dir = get_level_model_dir(level, algorithm, base_dir)
+
+    final_model_path = os.path.join(model_dir, "final_model.zip")
+    if os.path.exists(final_model_path):
+        return final_model_path
+
+    latest_checkpoint = _latest_pattern(os.path.join(model_dir, "checkpoint_*_steps.zip"))
+    if latest_checkpoint:
+        return latest_checkpoint
+
+    if algorithm == 'dqn':
+        return _find_legacy_level_model(level, base_dir)
+
+    return None
+
+
+
+def find_latest_model(base_dir="./models", algorithm='dqn'):
+    """
+    查找最新的模型文件
+
+    优先顺序：
+    1. 新布局下当前算法的 final_model.zip
+    2. 新布局下当前算法的最新 checkpoint
+    3. 旧版 battle_city_<algo>_* 布局
+    4. 旧版按关卡目录布局（仅 DQN 兼容）
+
+    Args:
+        base_dir: 模型基础目录
+        algorithm: 算法类型
+
+    Returns:
+        最新模型路径，未找到返回 None
+    """
+    algorithm = normalize_algorithm(algorithm)
+
+    candidates = [
+        _latest_pattern(os.path.join(base_dir, algorithm, "level_*", "final_model.zip")),
+        _latest_pattern(os.path.join(base_dir, algorithm, "level_*", "checkpoint_*_steps.zip")),
+        _latest_pattern(os.path.join(base_dir, f"battle_city_{algorithm}_*", "final_model.zip")),
+        _latest_pattern(os.path.join(base_dir, f"battle_city_{algorithm}_*", "best", "best_model.zip")),
+    ]
+
+    if algorithm == 'dqn':
+        candidates.append(_latest_pattern(os.path.join(base_dir, "level_*", "best_model.zip")))
+
+    return _latest_file([path for path in candidates if path])
+
+
+
+def resolve_model_path(model_path=None, level=1, algorithm='dqn', base_dir="./models", allow_latest=False):
+    """解析模型路径：优先显式路径，否则按关卡查找；可选回退到最新同算法模型"""
+    if model_path:
+        return model_path
+
+    resolved_path = find_level_model(level=level, algorithm=algorithm, base_dir=base_dir)
+    if resolved_path:
+        return resolved_path
+
+    if allow_latest:
+        return find_latest_model(base_dir=base_dir, algorithm=algorithm)
+
+    return None
+
+
+# ============================================================
+# 通用辅助
+# ============================================================
 
 
 def setup_directories(*dirs):
@@ -91,6 +248,7 @@ def setup_directories(*dirs):
     """
     for d in dirs:
         os.makedirs(d, exist_ok=True)
+
 
 
 def print_training_info(algorithm, config, log_dir, model_dir):
@@ -113,6 +271,7 @@ def print_training_info(algorithm, config, log_dir, model_dir):
     print("=" * 60)
 
 
+
 def print_episode_result(episode, total_episodes, info, episode_reward, step):
     """
     打印回合结果
@@ -131,20 +290,3 @@ def print_episode_result(episode, total_episodes, info, episode_reward, step):
     print(f"  得分: {info.get('score', 0)}")
     print(f"  击杀敌人: {info.get('total_kills', 0)}")
     print(f"  剩余生命: {info.get('lives', 0)}")
-
-
-def find_latest_model(base_dir="./models", pattern="battle_city_*/final_model.zip"):
-    """
-    查找最新的模型文件
-
-    Args:
-        base_dir: 模型基础目录
-        pattern: 模型文件模式
-
-    Returns:
-        最新模型路径，未找到返回 None
-    """
-    import glob
-    search_path = os.path.join(base_dir, pattern)
-    model_files = sorted(glob.glob(search_path))
-    return model_files[-1] if model_files else None

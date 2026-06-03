@@ -51,33 +51,39 @@ uv pip install -r requirements.txt
 ### 训练模型
 
 ```bash
-# 训练关卡 1
-python train_by_level.py --level 1
+# 训练关卡 1（默认 DQN）
+python train.py --level 1
+
+# 使用 PPO 算法
+python train.py --algo ppo --level 1
 
 # 指定训练步数
-python train_by_level.py --level 1 --steps 5000000
+python train.py --level 1 --steps 5000000
 
 # 从头开始训练（不加载已有模型）
-python train_by_level.py --level 1 --new
+python train.py --level 1 --new
 ```
 
 ### 测试模型
 
 ```bash
-# 测试关卡 1 的最佳模型
-python train_by_level.py --test --level 1 --episodes 10
+# 测试关卡 1 的模型
+python test.py --level 1 --episodes 10
 
 # 可视化测试（显示游戏画面）
-python visualize.py --model ./models/level_1/best_model.zip --episodes 5 --speed 10
+python test.py --visual --level 1 --episodes 5 --speed 10
 
-# 使用最新模型测试
-python visualize.py --dqn --episodes 3 --speed 10
+# 测试指定模型
+python test.py --algo dqn --model ./models/dqn/level_1/final_model.zip --episodes 5
+
+# 使用 PPO 模型测试
+python test.py --ppo --level 1
 ```
 
 ### 手动游戏
 
 ```bash
-python visualize.py --play
+python test.py --play --level 1
 ```
 
 ## 📁 项目结构
@@ -88,18 +94,20 @@ python visualize.py --play
 ├── env.py                # Gymnasium 环境包装器
 ├── config.py             # 配置模块（超参数、奖励设置）
 ├── utils.py              # 工具函数
-├── train_by_level.py     # 按关卡训练脚本（推荐）
-├── train_ppo.py          # PPO 训练脚本
-├── train_dqn.py          # DQN 训练脚本
-├── continue_training.py  # 继续训练脚本
-├── visualize.py          # 可视化测试脚本
+├── train.py              # 统一训练脚本（DQN/PPO）
+├── test.py               # 统一测试脚本
 ├── requirements.txt      # Python 依赖
 │
 ├── models/               # 训练保存的模型
-│   └── level_1/          # 关卡 1 的模型
-│       └── best_model.zip
+│   ├── dqn/
+│   │   └── level_1/
+│   │       ├── final_model.zip
+│   │       └── checkpoint_10000_steps.zip
+│   └── ppo/
+│       └── level_1/
+│           └── final_model.zip
 │
-├── logs/                 # TensorBoard 日志
+├── logs/                 # TensorBoard 日志（按算法/关卡划分）
 ├── levels/               # 关卡地图文件
 ├── images/               # 游戏图片资源
 ├── sounds/               # 音效文件
@@ -110,26 +118,26 @@ python visualize.py --play
 
 观察空间是 **727 维**向量，包含：
 
-| 组件 | 维度 | 说明 |
-|------|------|------|
-| 玩家状态 | 4 | x, y 坐标, 方向, 生命值 |
-| 敌人状态 | 16 | 最多 4 个敌人 × 4 属性 |
-| 子弹状态 | 30 | 最多 10 颗子弹 × 3 属性 |
-| 地图状态 | 676 | 26×26 网格的瓦片类型 |
-| 剩余敌人 | 1 | 剩余敌人数量 |
+| 组件   | 维度  | 说明               |
+|------|-----|------------------|
+| 玩家状态 | 4   | x, y 坐标, 方向, 生命值 |
+| 敌人状态 | 16  | 最多 4 个敌人 × 4 属性  |
+| 子弹状态 | 30  | 最多 10 颗子弹 × 3 属性 |
+| 地图状态 | 676 | 26×26 网格的瓦片类型    |
+| 剩余敌人 | 1   | 剩余敌人数量           |
 
 ## 🕹️ 动作空间
 
 **6 个离散动作**：
 
-| 动作 | 说明 |
-|------|------|
-| 0 | 无操作 (NOOP) |
-| 1 | 向上移动 |
-| 2 | 向右移动 |
-| 3 | 向下移动 |
-| 4 | 向左移动 |
-| 5 | 开火 |
+| 动作 | 说明         |
+|----|------------|
+| 0  | 无操作 (NOOP) |
+| 1  | 向上移动       |
+| 2  | 向右移动       |
+| 3  | 向下移动       |
+| 4  | 向左移动       |
+| 5  | 开火         |
 
 ## ⚙️ 配置说明
 
@@ -166,11 +174,11 @@ REWARD_CONFIG = {
 
 ### 关卡 1 性能
 
-| 指标 | 数值 |
-|------|------|
-| 通关率 | **100%** |
+| 指标   | 数值        |
+|------|-----------|
+| 通关率  | **100%**  |
 | 平均奖励 | **92.09** |
-| 平均得分 | **233** |
+| 平均得分 | **233**   |
 | 最快通关 | **184 步** |
 
 ### 训练曲线
@@ -181,6 +189,8 @@ REWARD_CONFIG = {
 tensorboard --logdir ./logs
 ```
 
+日志会按算法和关卡分目录保存，例如 `./logs/dqn/level_1`。
+
 然后在浏览器打开 `http://localhost:6006`
 
 ## 🔧 高级用法
@@ -188,19 +198,37 @@ tensorboard --logdir ./logs
 ### 继续训练
 
 ```bash
-# 自动查找最新模型继续训练
-python continue_training.py
+# 自动从当前算法的已有模型继续训练
+python train.py --algo dqn --level 1
 
-# 指定模型继续训练
-python continue_training.py --model ./models/level_1/best_model.zip --steps 1000000
+# 指定训练步数
+python train.py --algo dqn --level 1 --steps 1000000
 ```
 
-### 评估回调
+### 不同算法
 
-训练脚本会自动：
-- 每 20,000 步评估一次
-- 保存最佳模型到 `models/level_X/best_model.zip`
-- 清理中间检查点，只保留最佳模型
+```bash
+# DQN 算法（默认）
+python train.py --algo dqn --level 1
+
+# PPO 算法
+python train.py --algo ppo --level 1
+```
+
+### 测试选项
+
+测试和自动发现会优先使用当前算法目录下的模型，例如 DQN 使用 `./models/dqn/level_1/...`，PPO 使用 `./models/ppo/level_1/...`。
+
+```bash
+# 无头测试
+python test.py --algo dqn --level 1 --episodes 10
+
+# 可视化测试
+python test.py --visual --algo dqn --level 1 --speed 10
+
+# 手动游戏
+python test.py --play --level 1
+```
 
 ### 自定义奖励
 

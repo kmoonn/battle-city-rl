@@ -6,13 +6,14 @@
 """
 
 import os
-import sys
-import gymnasium as gym
-from gymnasium import spaces
-import numpy as np
 import random
+import sys
 
-from config import LEVELS_ENEMIES
+import gymnasium as gym
+import numpy as np
+from gymnasium import spaces
+
+from config import REWARD_CONFIG, get_level_enemies
 
 # 添加当前目录到路径
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -92,11 +93,7 @@ class BattleCityEnv(gym.Env):
         game.stage = level_nr
 
         # 设置敌人配置
-        if level_nr <= 35:
-            enemies_l = LEVELS_ENEMIES[level_nr - 1]
-        else:
-            enemies_l = LEVELS_ENEMIES[34]
-
+        enemies_l = get_level_enemies(level_nr)
         game.level.enemies_left = [0]*enemies_l[0] + [1]*enemies_l[1] + [2]*enemies_l[2] + [3]*enemies_l[3]
         random.shuffle(game.level.enemies_left)
 
@@ -293,42 +290,40 @@ class BattleCityEnv(gym.Env):
         return 0
 
     def _calculate_reward(self):
-        """计算奖励值 - 更鼓励攻击性行为"""
+        """计算奖励值 - 使用配置文件中的奖励参数"""
         reward = 0.0
 
-        # 得分奖励 (击杀敌人、收集道具) - 更大的奖励
+        # 得分奖励 (击杀敌人、收集道具)
         current_score = self._get_player_score()
         score_diff = current_score - self.last_score
         if score_diff > 0:
-            reward += score_diff / 30.0  # 进一步增加奖励
+            reward += score_diff * REWARD_CONFIG['score_reward_factor']
         self.last_score = current_score
 
-        # 生命惩罚 - 中等惩罚
+        # 生命惩罚
         current_lives = self._get_player_lives()
         if current_lives < self.last_lives:
-            reward -= 1.5
+            reward += REWARD_CONFIG['death_penalty']
         self.last_lives = current_lives
 
-        # 击杀敌人奖励 - 更大的奖励
+        # 击杀敌人奖励
         current_enemies = self._get_enemies_remaining()
         if current_enemies < self.last_enemies_count:
             kills = self.last_enemies_count - current_enemies
-            reward += 2.0 * kills  # 增加击杀奖励
-            self.total_kills += kills  # 跟踪总击杀数
+            reward += REWARD_CONFIG['kill_reward'] * kills
+            self.total_kills += kills
         self.last_enemies_count = current_enemies
 
         # 时间惩罚 - 鼓励快速行动
-        reward -= 0.01
+        reward += REWARD_CONFIG['time_penalty']
 
-        # 移除生存奖励 - 不要鼓励"苟活"
-
-        # 通关奖励 - 非常大的奖励
+        # 通关奖励
         if self.level_complete:
-            reward += 50.0
+            reward += REWARD_CONFIG['level_complete_reward']
 
         # 游戏结束惩罚
         if self.game_over and not self.level_complete:
-            reward -= 5.0
+            reward += REWARD_CONFIG['game_over_penalty']
 
         return reward
 

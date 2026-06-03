@@ -1,8 +1,15 @@
 #!/usr/bin/python
 # coding=utf-8
 
-import os, pygame, time, random, uuid, sys
+import os
+import random
+import uuid
+
 import numpy as np
+import pygame
+
+from config import get_level_enemies, TILE_BRICK, TILE_STEEL, TILE_WATER, TILE_GRASS, TILE_FROZE
+
 
 class myRect(pygame.Rect):
 	""" Add type property """
@@ -1248,7 +1255,7 @@ class Game():
 
 	TILE_SIZE = 16
 
-	def __init__(self):
+	def __init__(self, fullscreen=False):
 
 		global screen, sprites, play_sounds, sounds
 
@@ -1265,7 +1272,7 @@ class Game():
 
 		size = width, height = 480, 416
 
-		if "-f" in sys.argv[1:]:
+		if fullscreen:
 			screen = pygame.display.set_mode(size, pygame.FULLSCREEN)
 		else:
 			screen = pygame.display.set_mode(size)
@@ -1939,21 +1946,7 @@ class Game():
 		self.timefreeze = False
 
 		# set number of enemies by types (basic, fast, power, armor) according to level
-		levels_enemies = (
-			(18,2,0,0), (14,4,0,2), (14,4,0,2), (2,5,10,3), (8,5,5,2),
-			(9,2,7,2), (7,4,6,3), (7,4,7,2), (6,4,7,3), (12,2,4,2),
-			(5,5,4,6), (0,6,8,6), (0,8,8,4), (0,4,10,6), (0,2,10,8),
-			(16,2,0,2), (8,2,8,2), (2,8,6,4), (4,4,4,8), (2,8,2,8),
-			(6,2,8,4), (6,8,2,4), (0,10,4,6), (10,4,4,2), (0,8,2,10),
-			(4,6,4,6), (2,8,2,8), (15,2,2,1), (0,4,10,6), (4,8,4,4),
-			(3,8,3,6), (6,4,2,8), (4,4,4,8), (0,10,4,6), (0,6,4,10)
-		)
-
-		if self.stage <= 35:
-			enemies_l = levels_enemies[self.stage - 1]
-		else:
-			enemies_l = levels_enemies[34]
-
+		enemies_l = get_level_enemies(self.stage)
 		self.level.enemies_left = [0]*enemies_l[0] + [1]*enemies_l[1] + [2]*enemies_l[2] + [3]*enemies_l[3]
 		random.shuffle(self.level.enemies_left)
 
@@ -2121,21 +2114,7 @@ class Game():
 			self.timefreeze = False
 
 			# 设置敌人配置
-			levels_enemies = (
-				(18,2,0,0), (14,4,0,2), (14,4,0,2), (2,5,10,3), (8,5,5,2),
-				(9,2,7,2), (7,4,6,3), (7,4,7,2), (6,4,7,3), (12,2,4,2),
-				(5,5,4,6), (0,6,8,6), (0,8,8,4), (0,4,10,6), (0,2,10,8),
-				(16,2,0,2), (8,2,8,2), (2,8,6,4), (4,4,4,8), (2,8,2,8),
-				(6,2,8,4), (6,8,2,4), (0,10,4,6), (10,4,4,2), (0,8,2,10),
-				(4,6,4,6), (2,8,2,8), (15,2,2,1), (0,4,10,6), (4,8,4,4),
-				(3,8,3,6), (6,4,2,8), (4,4,4,8), (0,10,4,6), (0,6,4,10)
-			)
-
-			if level_nr <= 35:
-				enemies_l = levels_enemies[level_nr - 1]
-			else:
-				enemies_l = levels_enemies[34]
-
+			enemies_l = get_level_enemies(level_nr)
 			self.level.enemies_left = [0]*enemies_l[0] + [1]*enemies_l[1] + [2]*enemies_l[2] + [3]*enemies_l[3]
 			random.shuffle(self.level.enemies_left)
 
@@ -2405,8 +2384,39 @@ sounds = {}
 
 castle = None  # 将在 Game 初始化时创建
 
-if __name__ == "__main__":
+def parse_args(argv=None):
+	import argparse
 
-	game = Game()
+	parser = argparse.ArgumentParser(description="坦克大战")
+	parser.add_argument("--level", type=int, default=None, help="直接启动指定关卡 (1-35)")
+	parser.add_argument("-f", action="store_true", help="全屏模式")
+	return parser.parse_args(argv)
+
+
+
+def run_game(level=None, fullscreen=False):
+	global castle
+
+	game = Game(fullscreen=fullscreen)
 	castle = Castle()
-	game.showMenu()
+
+	if level:
+		# 直接启动指定关卡
+		level_nr = level % 35
+		if level_nr == 0:
+			level_nr = 35
+		game.stage = level_nr - 1  # nextLevel 会 +1
+		game.nextLevel()
+	else:
+		# 显示菜单
+		game.showMenu()
+
+
+
+def main(argv=None):
+	args = parse_args(argv)
+	run_game(level=args.level, fullscreen=args.f)
+
+
+if __name__ == "__main__":
+	main()
