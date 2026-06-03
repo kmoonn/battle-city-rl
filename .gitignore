@@ -43,6 +43,7 @@ env/
 *.pkl
 *.pt
 *.pth
+*.npz
 
 # Logs and TensorBoard
 *.log
