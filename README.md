@@ -251,7 +251,7 @@ python train.py --algo ppo --level 2
 
 修改 `config.py` 中的 `REWARD_CONFIG` 来调整奖励函数：
 
-```python
+```text
 # 更鼓励攻击性行为
 REWARD_CONFIG['kill_reward'] = 25.0       # 增加击杀奖励
 REWARD_CONFIG['fire_reward'] = 1.0        # 增加开火奖励
