@@ -2,7 +2,7 @@
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Stable-Baselines3](https://img.shields.io/badge/SB3-DQN-green.svg)](https://github.com/DLR-RM/stable-baselines3)
+[![Stable-Baselines3](https://img.shields.io/badge/SB3-DQN%2FPPO-green.svg)](https://github.com/DLR-RM/stable-baselines3)
 
 使用深度强化学习训练 AI 通关经典坦克大战游戏！
 
@@ -10,11 +10,12 @@
 
 ## ✨ 特性
 
-- 🤖 **DQN 强化学习** - 使用 Deep Q-Network 训练智能体
-- 🏆 **自动模型保存** - 按关卡保存最佳模型
+- 🤖 **DQN & PPO 算法** - 支持两种主流强化学习算法
+- 🏆 **自动保存最佳模型** - 按关卡保存，支持多种算法并存
 - 📊 **TensorBoard 可视化** - 实时监控训练过程
 - 🎮 **可视化测试** - 支持高速回放观看 AI 表现
 - ⚙️ **模块化设计** - 配置与代码分离，易于扩展
+- 🎯 **课程学习** - 支持从简单关卡迁移学习
 
 ## 📦 安装
 
@@ -34,8 +35,6 @@ source .venv/bin/activate
 
 ### 安装依赖
 
-推荐使用 uv
-
 ```bash
 uv pip install -r requirements.txt
 ```
@@ -45,6 +44,9 @@ uv pip install -r requirements.txt
 - `pygame>=2.0.0`
 - `gymnasium>=0.29.0`
 - `stable-baselines3>=2.0.0`
+- `tensorboard>=2.0.0`
+- `tqdm>=4.0.0`
+- `rich>=13.0.0`
 
 ## 🚀 快速开始
 
@@ -67,23 +69,27 @@ python train.py --level 1 --new
 ### 测试模型
 
 ```bash
-# 测试关卡 1 的模型
-python test.py --level 1 --episodes 10
+# 测试关卡 1 的 DQN 模型
+python test.py --algo dqn --level 1 --episodes 10
+
+# 测试关卡 1 的 PPO 模型
+python test.py --algo ppo --level 1 --episodes 10
 
 # 可视化测试（显示游戏画面）
-python test.py --visual --level 1 --episodes 5 --speed 10
+python test.py --visual --algo ppo --level 1 --speed 3
 
 # 测试指定模型
-python test.py --algo dqn --model ./models/dqn/level_1/final_model.zip --episodes 5
-
-# 使用 PPO 模型测试
-python test.py --ppo --level 1
+python test.py --model ./models/level_1/best_model_dqn.zip --episodes 5
 ```
 
 ### 手动游戏
 
 ```bash
-python test.py --play --level 1
+# 进入菜单选择关卡
+python test.py --play
+
+# 直接玩关卡 2
+python test.py --play --level 2
 ```
 
 ## 📁 项目结构
@@ -99,13 +105,12 @@ python test.py --play --level 1
 ├── requirements.txt      # Python 依赖
 │
 ├── models/               # 训练保存的模型
-│   ├── dqn/
-│   │   └── level_1/
-│   │       ├── final_model.zip
-│   │       └── checkpoint_10000_steps.zip
-│   └── ppo/
-│       └── level_1/
-│           └── final_model.zip
+│   ├── level_1/
+│   │   ├── best_model_dqn.zip
+│   │   └── best_model_ppo.zip
+│   └── level_2/
+│       ├── best_model_dqn.zip
+│       └── best_model_ppo.zip
 │
 ├── logs/                 # TensorBoard 日志（按算法/关卡划分）
 ├── levels/               # 关卡地图文件
@@ -143,17 +148,31 @@ python test.py --play --level 1
 
 主要配置位于 `config.py`：
 
+### PPO 超参数
+
+```python
+PPO_CONFIG = {
+    'total_timesteps': 5_000_000,  # 总训练步数
+    'learning_rate': 3e-4,         # 学习率
+    'n_steps': 2048,               # 每次更新的步数
+    'batch_size': 64,              # 批大小
+    'n_epochs': 10,                # 训练轮数
+    'gamma': 0.99,                 # 折扣因子
+    'clip_range': 0.2,             # PPO 裁剪范围
+}
+```
+
 ### DQN 超参数
 
 ```python
 DQN_CONFIG = {
-    'total_timesteps': 2_000_000,  # 总训练步数
+    'total_timesteps': 5_000_000,  # 总训练步数
     'learning_rate': 1e-4,         # 学习率
     'buffer_size': 100000,         # 经验回放缓冲区大小
     'learning_starts': 10000,      # 开始学习的步数
     'batch_size': 64,              # 批大小
     'gamma': 0.99,                 # 折扣因子
-    'exploration_fraction': 0.3,   # 探索比例
+    'exploration_fraction': 0.2,   # 探索比例
 }
 ```
 
@@ -161,25 +180,35 @@ DQN_CONFIG = {
 
 ```python
 REWARD_CONFIG = {
-    'score_reward_factor': 1.0/30.0,   # 得分奖励系数
-    'death_penalty': -1.5,              # 死亡惩罚
-    'kill_reward': 2.0,                 # 击杀奖励
-    'time_penalty': -0.01,              # 时间惩罚
-    'level_complete_reward': 50.0,      # 通关奖励
-    'game_over_penalty': -5.0,          # 游戏结束惩罚
+    'score_reward_factor': 1.0/5.0,    # 得分奖励系数
+    'death_penalty': -1.0,              # 死亡惩罚
+    'kill_reward': 20.0,                # 击杀奖励
+    'time_penalty': -0.05,              # 时间惩罚
+    'level_complete_reward': 500.0,     # 通关奖励
+    'game_over_penalty': -30.0,         # 游戏结束惩罚
+    'action_reward': 0.1,               # 行动奖励
+    'no_action_penalty': -0.3,          # 不动惩罚
+    'fire_reward': 0.5,                 # 开火奖励
 }
 ```
 
 ## 📊 训练结果
 
-### 关卡 1 性能
+### 关卡 1 (DQN)
 
 | 指标   | 数值        |
 |------|-----------|
 | 通关率  | **100%**  |
 | 平均奖励 | **92.09** |
 | 平均得分 | **233**   |
-| 最快通关 | **184 步** |
+
+### 关卡 2 (PPO)
+
+| 指标   | 数值        |
+|------|-----------|
+| 通关率  | **80%**   |
+| 平均奖励 | **3452**  |
+| 平均击杀 | **59**    |
 
 ### 训练曲线
 
@@ -189,8 +218,6 @@ REWARD_CONFIG = {
 tensorboard --logdir ./logs
 ```
 
-日志会按算法和关卡分目录保存，例如 `./logs/dqn/level_1`。
-
 然后在浏览器打开 `http://localhost:6006`
 
 ## 🔧 高级用法
@@ -199,35 +226,25 @@ tensorboard --logdir ./logs
 
 ```bash
 # 自动从当前算法的已有模型继续训练
-python train.py --algo dqn --level 1
+python train.py --algo ppo --level 2
 
 # 指定训练步数
-python train.py --algo dqn --level 1 --steps 1000000
+python train.py --algo ppo --level 2 --steps 10000000
 ```
 
-### 不同算法
+### 课程学习
+
+从简单关卡开始，迁移到更难关卡：
 
 ```bash
-# DQN 算法（默认）
-python train.py --algo dqn --level 1
-
-# PPO 算法
+# 1. 先训练关卡 1
 python train.py --algo ppo --level 1
-```
 
-### 测试选项
+# 2. 复制关卡 1 模型作为关卡 2 起点
+cp models/level_1/best_model_ppo.zip models/level_2/best_model_ppo.zip
 
-测试和自动发现会优先使用当前算法目录下的模型，例如 DQN 使用 `./models/dqn/level_1/...`，PPO 使用 `./models/ppo/level_1/...`。
-
-```bash
-# 无头测试
-python test.py --algo dqn --level 1 --episodes 10
-
-# 可视化测试
-python test.py --visual --algo dqn --level 1 --speed 10
-
-# 手动游戏
-python test.py --play --level 1
+# 3. 继续训练关卡 2
+python train.py --algo ppo --level 2
 ```
 
 ### 自定义奖励
@@ -236,8 +253,9 @@ python test.py --play --level 1
 
 ```python
 # 更鼓励攻击性行为
-REWARD_CONFIG['kill_reward'] = 3.0        # 增加击杀奖励
-REWARD_CONFIG['time_penalty'] = -0.02     # 增加时间压力
+REWARD_CONFIG['kill_reward'] = 25.0       # 增加击杀奖励
+REWARD_CONFIG['fire_reward'] = 1.0        # 增加开火奖励
+REWARD_CONFIG['death_penalty'] = -0.5     # 减少死亡惩罚
 ```
 
 ## 🎓 技术细节
@@ -250,16 +268,19 @@ REWARD_CONFIG['time_penalty'] = -0.02     # 增加时间压力
 
 ### 网络结构
 
-使用 Stable-Baselines3 的默认 MlpPolicy：
+自定义 MlpPolicy：
 - 2 层全连接网络
-- 每层 64 个神经元
+- 每层 **256** 个神经元（比默认更大）
 - ReLU 激活函数
 
 ### 探索策略
 
-- 使用 ε-greedy 策略
+DQN 使用 ε-greedy 策略：
 - 初始 ε = 1.0，最终 ε = 0.05
-- 探索比例占总训练步数的 30%
+- 探索比例占总训练步数的 20%
+
+PPO 使用熵系数控制探索：
+- ent_coef = 0.01
 
 ## 🤝 贡献
 
@@ -270,7 +291,6 @@ REWARD_CONFIG['time_penalty'] = -0.02     # 增加时间压力
 3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
 4. 推送到分支 (`git push origin feature/AmazingFeature`)
 5. 开启 Pull Request
-
 
 ## 🙏 参考
 

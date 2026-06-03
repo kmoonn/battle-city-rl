@@ -73,9 +73,8 @@ def get_model_class(algorithm='dqn'):
 
 
 def get_level_model_dir(level=1, algorithm='dqn', base_dir="./models"):
-    """获取按算法和关卡划分的模型目录"""
-    algorithm = normalize_algorithm(algorithm)
-    return os.path.join(base_dir, algorithm, f"level_{level}")
+    """获取关卡模型目录（一个关卡一个文件夹）"""
+    return os.path.join(base_dir, f"level_{level}")
 
 
 
@@ -119,6 +118,11 @@ def _latest_pattern(pattern):
 def _find_legacy_level_model(level=1, base_dir="./models"):
     """查找旧版按关卡目录中的模型（仅保留可明确识别为旧 DQN 流程的 best_model）"""
     legacy_dir = os.path.join(base_dir, f"level_{level}")
+    # 优先查找新命名格式
+    best_model_path = os.path.join(legacy_dir, "best_model_dqn.zip")
+    if os.path.exists(best_model_path):
+        return best_model_path
+    # 兼容旧格式
     best_model_path = os.path.join(legacy_dir, "best_model.zip")
     if os.path.exists(best_model_path):
         return best_model_path
@@ -128,7 +132,7 @@ def _find_legacy_level_model(level=1, base_dir="./models"):
 
 def find_best_model(base_dir="./models", algorithm='dqn'):
     """
-    查找最佳模型文件（兼容旧布局）
+    查找最佳模型文件
 
     Args:
         base_dir: 模型基础目录
@@ -139,13 +143,10 @@ def find_best_model(base_dir="./models", algorithm='dqn'):
     """
     algorithm = normalize_algorithm(algorithm)
 
+    # 查找新格式: models/level_X/best_model_ppo.zip 或 best_model_dqn.zip
     candidates = [
-        _latest_pattern(os.path.join(base_dir, algorithm, "level_*", "best_model.zip")),
-        _latest_pattern(os.path.join(base_dir, f"battle_city_{algorithm}_*", "best", "best_model.zip")),
+        _latest_pattern(os.path.join(base_dir, "level_*", f"best_model_{algorithm}.zip")),
     ]
-
-    if algorithm == 'dqn':
-        candidates.append(_latest_pattern(os.path.join(base_dir, "level_*", "best_model.zip")))
 
     return _latest_file([path for path in candidates if path])
 
@@ -155,10 +156,9 @@ def find_level_model(level=1, algorithm='dqn', base_dir="./models"):
     """
     查找指定关卡的最佳可用模型
 
-    优先顺序：
-    1. 新布局下该算法/关卡的 final_model.zip
-    2. 新布局下该算法/关卡最新 checkpoint
-    3. 旧版按关卡目录中的模型（仅 DQN 兼容）
+    查找顺序：
+    1. models/level_X/best_model_ppo.zip 或 best_model_dqn.zip
+    2. 兼容旧格式: models/level_X/best_model.zip
 
     Args:
         level: 关卡编号
@@ -171,16 +171,15 @@ def find_level_model(level=1, algorithm='dqn', base_dir="./models"):
     algorithm = normalize_algorithm(algorithm)
     model_dir = get_level_model_dir(level, algorithm, base_dir)
 
-    final_model_path = os.path.join(model_dir, "final_model.zip")
-    if os.path.exists(final_model_path):
-        return final_model_path
+    # 新格式: best_model_ppo.zip 或 best_model_dqn.zip
+    best_model_path = os.path.join(model_dir, f"best_model_{algorithm}.zip")
+    if os.path.exists(best_model_path):
+        return best_model_path
 
-    latest_checkpoint = _latest_pattern(os.path.join(model_dir, "checkpoint_*_steps.zip"))
-    if latest_checkpoint:
-        return latest_checkpoint
-
-    if algorithm == 'dqn':
-        return _find_legacy_level_model(level, base_dir)
+    # 兼容旧格式: best_model.zip
+    legacy_path = os.path.join(model_dir, "best_model.zip")
+    if os.path.exists(legacy_path):
+        return legacy_path
 
     return None
 
@@ -189,12 +188,6 @@ def find_level_model(level=1, algorithm='dqn', base_dir="./models"):
 def find_latest_model(base_dir="./models", algorithm='dqn'):
     """
     查找最新的模型文件
-
-    优先顺序：
-    1. 新布局下当前算法的 final_model.zip
-    2. 新布局下当前算法的最新 checkpoint
-    3. 旧版 battle_city_<algo>_* 布局
-    4. 旧版按关卡目录布局（仅 DQN 兼容）
 
     Args:
         base_dir: 模型基础目录
@@ -205,15 +198,10 @@ def find_latest_model(base_dir="./models", algorithm='dqn'):
     """
     algorithm = normalize_algorithm(algorithm)
 
+    # 查找新格式
     candidates = [
-        _latest_pattern(os.path.join(base_dir, algorithm, "level_*", "final_model.zip")),
-        _latest_pattern(os.path.join(base_dir, algorithm, "level_*", "checkpoint_*_steps.zip")),
-        _latest_pattern(os.path.join(base_dir, f"battle_city_{algorithm}_*", "final_model.zip")),
-        _latest_pattern(os.path.join(base_dir, f"battle_city_{algorithm}_*", "best", "best_model.zip")),
+        _latest_pattern(os.path.join(base_dir, "level_*", f"best_model_{algorithm}.zip")),
     ]
-
-    if algorithm == 'dqn':
-        candidates.append(_latest_pattern(os.path.join(base_dir, "level_*", "best_model.zip")))
 
     return _latest_file([path for path in candidates if path])
 

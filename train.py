@@ -11,7 +11,8 @@ import sys
 
 import torch
 from stable_baselines3 import DQN, PPO
-from stable_baselines3.common.callbacks import CheckpointCallback
+from stable_baselines3.common.callbacks import EvalCallback
+from stable_baselines3.common.monitor import Monitor
 
 os.environ['SDL_VIDEODRIVER'] = 'dummy'
 
@@ -133,17 +134,24 @@ def train(algorithm='dqn', level=1, total_timesteps=None, continue_from_best=Tru
                 tensorboard_log=log_dir,
             )
 
+    # 创建评估环境用于保存最佳模型
+    eval_env = Monitor(BattleCityEnv(render_mode=None, level=level))
+
+    # 使用 EvalCallback 自动保存最佳模型
     callbacks = [
-        CheckpointCallback(
-            save_freq=CALLBACK_CONFIG['checkpoint_freq'],
-            save_path=model_dir,
-            name_prefix="checkpoint",
-            save_replay_buffer=False,
-            save_vecnormalize=True,
+        EvalCallback(
+            eval_env,
+            best_model_save_path=model_dir,
+            log_path=os.path.join(model_dir, "eval_logs"),
+            eval_freq=CALLBACK_CONFIG['eval_freq'],
+            n_eval_episodes=CALLBACK_CONFIG['n_eval_episodes'],
+            deterministic=True,
+            render=False,
         )
     ]
 
     print("\n开始训练...")
+    print(f"每 {CALLBACK_CONFIG['eval_freq']:,} 步评估一次，自动保存最佳模型")
     print("-" * 60)
     try:
         model.learn(
@@ -155,20 +163,35 @@ def train(algorithm='dqn', level=1, total_timesteps=None, continue_from_best=Tru
     except KeyboardInterrupt:
         print("\n\n训练被用户中断!")
 
-    final_path = os.path.join(model_dir, "final_model")
-    model.save(final_path)
-    saved_model_path = final_path + ".zip"
-    print(f"\n最终模型已保存: {saved_model_path}")
+    # 重命名最佳模型文件，添加算法后缀
+    old_best_path = os.path.join(model_dir, "best_model.zip")
+    new_best_path = os.path.join(model_dir, f"best_model_{algorithm}.zip")
+    if os.path.exists(old_best_path):
+        # 删除旧的带后缀文件（如果存在）
+        if os.path.exists(new_best_path):
+            os.remove(new_best_path)
+        os.rename(old_best_path, new_best_path)
+        print(f"\n最佳模型已保存: {new_best_path}")
+    else:
+        print(f"\n警告: 未找到最佳模型文件 {old_best_path}")
+
+    # 清理评估日志
+    eval_logs_dir = os.path.join(model_dir, "eval_logs")
+    if os.path.exists(eval_logs_dir):
+        import shutil
+        shutil.rmtree(eval_logs_dir)
 
     env.close()
+    eval_env.close()
 
     print("\n" + "=" * 60)
     print("训练完成!")
     print(f"模型目录: {model_dir}")
+    print(f"最佳模型: {new_best_path}")
     print(f"查看训练曲线: tensorboard --logdir {log_dir}")
     print("=" * 60)
 
-    return saved_model_path
+    return new_best_path
 
 
 # ============================================================
