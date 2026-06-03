@@ -136,8 +136,8 @@ class BattleCityEnv(gym.Env):
         self._step_game(action)
         self.step_count += 1
 
-        # 计算奖励
-        reward = self._calculate_reward()
+        # 计算奖励（传入 action 用于判断是否行动）
+        reward = self._calculate_reward(action)
 
         # 检查是否结束
         done = self._is_done()
@@ -289,7 +289,7 @@ class BattleCityEnv(gym.Env):
             return len(self.game_state.level.enemies_left) + len(tanks.enemies)
         return 0
 
-    def _calculate_reward(self):
+    def _calculate_reward(self, action=None):
         """计算奖励值 - 使用配置文件中的奖励参数"""
         reward = 0.0
 
@@ -316,6 +316,15 @@ class BattleCityEnv(gym.Env):
 
         # 时间惩罚 - 鼓励快速行动
         reward += REWARD_CONFIG['time_penalty']
+
+        # 行动奖励 / 不动惩罚
+        if action is not None:
+            if action == 0:  # NOOP - 不动
+                reward += REWARD_CONFIG.get('no_action_penalty', -0.2)
+            elif action == 5:  # 开火 - 额外奖励
+                reward += REWARD_CONFIG.get('fire_reward', 0.5)
+            else:  # 移动
+                reward += REWARD_CONFIG.get('action_reward', 0.1)
 
         # 通关奖励
         if self.level_complete:
