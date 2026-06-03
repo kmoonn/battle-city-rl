@@ -40,7 +40,6 @@ env/
 .ipynb_checkpoints
 
 # Model files (large binaries)
-*.zip
 *.pkl
 *.pt
 *.pth
