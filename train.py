@@ -10,6 +10,11 @@ import os
 import sys
 
 import torch
+
+# MLP 网络使用 CPU 更快（GPU 适合大型 CNN）
+device = "cpu"
+print(f"使用设备: {device}")
+
 from stable_baselines3 import DQN, PPO
 from stable_baselines3.common.callbacks import EvalCallback
 from stable_baselines3.common.monitor import Monitor
@@ -113,6 +118,7 @@ def train(algorithm='dqn', level=1, total_timesteps=None, continue_from_best=Tru
                 policy_kwargs=policy_kwargs,
                 verbose=1,
                 tensorboard_log=log_dir,
+                device=device,
             )
         else:
             model = DQN(
@@ -132,6 +138,7 @@ def train(algorithm='dqn', level=1, total_timesteps=None, continue_from_best=Tru
                 policy_kwargs=policy_kwargs,
                 verbose=1,
                 tensorboard_log=log_dir,
+                device=device,
             )
 
     # 创建评估环境用于保存最佳模型
