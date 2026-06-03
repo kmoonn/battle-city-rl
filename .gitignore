@@ -55,6 +55,7 @@ Thumbs.db
 
 # Project specific
 .ttadk/
+.claude/
 specs/doc_export/
 .hiscore
 
