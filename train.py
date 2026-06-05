@@ -115,6 +115,8 @@ def train(algorithm='dqn', level=1, total_timesteps=None, continue_from_best=Tru
                 gae_lambda=config['gae_lambda'],
                 clip_range=config['clip_range'],
                 ent_coef=config['ent_coef'],
+                vf_coef=config.get('vf_coef', 0.5),
+                max_grad_norm=config.get('max_grad_norm', 0.5),
                 policy_kwargs=policy_kwargs,
                 verbose=1,
                 tensorboard_log=log_dir,

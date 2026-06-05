@@ -290,23 +290,17 @@ class BattleCityEnv(gym.Env):
         return 0
 
     def _calculate_reward(self, action=None):
-        """计算奖励值 - 使用配置文件中的奖励参数"""
+        """计算奖励值 - 简化版，信号清晰
+        
+        核心设计：
+        - FIRE(0.3) > MOVE(0) > NOOP(-0.1)：确保agent优先开火
+        - 击杀奖励(30)：终极目标，只有开火才能实现
+        - 移动不给奖励：消除"只移动不开火"的诱惑
+        - 去掉所有复杂的位置变化/连续开火等噪音奖励
+        """
         reward = 0.0
 
-        # 得分奖励 (击杀敌人、收集道具)
-        current_score = self._get_player_score()
-        score_diff = current_score - self.last_score
-        if score_diff > 0:
-            reward += score_diff * REWARD_CONFIG['score_reward_factor']
-        self.last_score = current_score
-
-        # 生命惩罚
-        current_lives = self._get_player_lives()
-        if current_lives < self.last_lives:
-            reward += REWARD_CONFIG['death_penalty']
-        self.last_lives = current_lives
-
-        # 击杀敌人奖励
+        # 击杀敌人奖励（核心目标）
         current_enemies = self._get_enemies_remaining()
         if current_enemies < self.last_enemies_count:
             kills = self.last_enemies_count - current_enemies
@@ -314,17 +308,22 @@ class BattleCityEnv(gym.Env):
             self.total_kills += kills
         self.last_enemies_count = current_enemies
 
-        # 时间惩罚 - 鼓励快速行动
+        # 生命惩罚
+        current_lives = self._get_player_lives()
+        if current_lives < self.last_lives:
+            reward += REWARD_CONFIG['death_penalty']
+        self.last_lives = current_lives
+
+        # 时间惩罚（轻微，鼓励效率）
         reward += REWARD_CONFIG['time_penalty']
 
-        # 行动奖励 / 不动惩罚
+        # 动作奖励（简洁清晰）
         if action is not None:
-            if action == 0:  # NOOP - 不动
-                reward += REWARD_CONFIG.get('no_action_penalty', -0.2)
-            elif action == 5:  # 开火 - 额外奖励
-                reward += REWARD_CONFIG.get('fire_reward', 0.5)
-            else:  # 移动
-                reward += REWARD_CONFIG.get('action_reward', 0.1)
+            if action == 0:  # NOOP
+                reward += REWARD_CONFIG['noop_penalty']
+            elif action == 5:  # FIRE - 唯一的正面单步动作奖励
+                reward += REWARD_CONFIG['fire_reward']
+            # else: MOVE(1-4) 不给奖励，消除只移动的诱惑
 
         # 通关奖励
         if self.level_complete:
