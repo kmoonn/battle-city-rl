@@ -55,14 +55,16 @@ LEVELS_ENEMIES = (
 
 PPO_CONFIG = {
     'total_timesteps': 5_000_000,  # 500万步（关卡难度较高）
-    'learning_rate': 3e-4,         # 提高学习率
-    'n_steps': 2048,               # 减少步数，更频繁更新
-    'batch_size': 64,              # 减小批大小，更稳定的梯度
+    'learning_rate': 3e-4,         # 学习率
+    'n_steps': 2048,               # 每轮采集步数
+    'batch_size': 64,              # 批大小
     'n_epochs': 10,
-    'gamma': 0.99,
+    'gamma': 0.995,                # 折扣因子，重视长期回报（通关）
     'gae_lambda': 0.95,
     'clip_range': 0.2,
-    'ent_coef': 0.01,              # 降低探索系数，更专注利用
+    'ent_coef': 0.02,              # 适中探索系数，平衡探索与利用
+    'vf_coef': 0.5,                # 价值函数系数
+    'max_grad_norm': 0.5,          # 梯度裁剪
 }
 
 # ============================================================
@@ -89,15 +91,19 @@ DQN_CONFIG = {
 # ============================================================
 
 REWARD_CONFIG = {
-    'score_reward_factor': 1.0 / 5.0,    # 大幅增大得分奖励
-    'death_penalty': -1.0,                # 减小死亡惩罚（鼓励冒险）
-    'kill_reward': 20.0,                  # 大幅增大击杀奖励
-    'time_penalty': -0.05,                # 时间惩罚
-    'level_complete_reward': 500.0,       # 大幅增大通关奖励
+    # --- 核心目标奖励 ---
+    'kill_reward': 30.0,                  # 击杀奖励（只有开火才能击杀，核心驱动）
+    'level_complete_reward': 500.0,       # 通关奖励
     'game_over_penalty': -30.0,           # 游戏结束惩罚
-    'action_reward': 0.1,                 # 行动奖励
-    'no_action_penalty': -0.3,            # 不动惩罚
-    'fire_reward': 0.5,                   # 新增：开火奖励（鼓励开火）
+    
+    # --- 每步基础奖励 ---
+    'time_penalty': -0.05,                # 轻微时间惩罚（鼓励效率）
+    'death_penalty': -1.0,                # 死亡惩罚（较轻，不让agent因怕死而不战）
+    
+    # --- 动作奖励（简单清晰）---
+    'fire_reward': 0.3,                   # 开火奖励：每步开火都能获得，确保agent愿意射击
+    'move_reward': 0.0,                   # 移动不给奖励（消除"只移动"的诱惑）
+    'noop_penalty': -0.1,                 # 不动轻微惩罚
 }
 
 # ============================================================
@@ -106,8 +112,8 @@ REWARD_CONFIG = {
 
 CALLBACK_CONFIG = {
     'checkpoint_freq': 50000,   # 检查点保存频率
-    'eval_freq': 50000,         # 评估频率（增大以减少评估开销）
-    'n_eval_episodes': 3,       # 评估回合数（减少以加速）
+    'eval_freq': 25000,         # 评估频率（更频繁评估以找到最佳模型）
+    'n_eval_episodes': 5,       # 评估回合数（更多回合得到更可靠评估）
 }
 
 # ============================================================
