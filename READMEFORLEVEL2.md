@@ -1,13 +1,13 @@
-## 🚀 关卡一快速开始
+## 🚀 关卡二快速开始
 
-### 在完成基础环境搭建后，你可以直接运行看到level 1的最佳训练模型结果
+### 在完成基础环境搭建后，你可以直接运行看到level 2的最佳训练模型结果
 **使用PPO模型进行训练**
 ```bash
-python test.py --model ./models/level_2/best_model_ppo.zip --episodes 5 --speed 30 --visual
+python test.py --algo ppo --level 2 --model ./models/level_2/best_model_ppo.zip --episodes 5 --speed 30 --visual
 
 ```
 
-### 所使用的dpn超参数和奖励函数配置为
+### 所使用的ppo超参数和奖励函数配置为
 
 ```python
 # PPO 训练配置
