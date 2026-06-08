@@ -1,9 +1,9 @@
-## 🚀 关卡一快速开始
+## 🚀 关卡六快速开始
 
-### 在完成基础环境搭建后，你可以直接运行看到level 1的最佳训练模型结果
+### 在完成基础环境搭建后，你可以直接运行看到level 6的最佳训练模型结果
 **使用DPN模型进行训练**
 ```bash
-python test.py --model ./models/level_1/best_model_dqn.zip --episodes 5 --speed 10 --visual
+python test.py --algo dqn --model ./models/level_6/best_model_dqn.zip --level 6 --episodes 10 --speed 30  --visual
 
 ```
 
